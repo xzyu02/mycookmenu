@@ -16,8 +16,8 @@ class PDF(FPDF):
         
         # 添加猫咪图片到左上角，保持原始尺寸
         try:
-            self.image('pipi3.png', 10, 5, w=35)  # top left
-            self.image('pipi4.png', self.w - 50, 5, w=45)  # top right
+            self.image('assets/pipi3.png', 10, 5, w=35)  # top left
+            self.image('assets/pipi4.png', self.w - 50, 5, w=45)  # top right
         except Exception as e:
             print(f"警告: 无法加载图片 'pipi3.png': {e}")
         
@@ -59,7 +59,7 @@ class PDF(FPDF):
         # 添加pipi2图片到右下角
         try:
             # 计算右下角位置 (页面宽度 - 图片宽度 - 右边距, 页面底部 - 图片高度 - 底边距)
-            self.image('pipi2.png', self.w - 45, self.h - 45, w=35)  # bottom right
+            self.image('assets/pipi2.png', self.w - 45, self.h - 45, w=35)  # bottom right
         except Exception as e:
             print(f"警告: 无法加载图片 'pipi2.png': {e}")
         
@@ -103,7 +103,7 @@ pdf = PDF()
 # 确保你有一个中文字体文件（.ttf），比如思源黑体、微软雅黑等
 # 这里假设你有一个名为 'msyh.ttf' 的字体文件在脚本同目录下
 try:
-    pdf.add_font('chinese', '', 'OzCarame.ttf')
+    pdf.add_font('chinese', '', 'assets/OzCarame.ttf')
 except RuntimeError:
     print("错误: 找不到字体文件 'msyh.ttf'。")
     print("请从网上搜索 '思源黑体 ttf' 或 '微软雅黑 ttf' 下载，并将其放在和脚本相同的文件夹中。")
