@@ -159,39 +159,47 @@ button { cursor: pointer; }
   background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
 }
-.search-row { display: flex; gap: 8px; padding-top: 10px; }
+.search-row { display: flex; gap: 8px; padding: 10px 0; }
 #search {
   flex: 1; min-width: 0; height: 40px; padding: 0 14px; border: 1px solid var(--border); border-radius: 12px;
   background: var(--surface);
 }
 .toggle { height: 40px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); white-space: nowrap; }
 .toggle[aria-pressed="true"] { background: var(--soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.chips { display: flex; gap: 8px; overflow-x: auto; padding: 10px 0; scrollbar-width: none; }
-.chips::-webkit-scrollbar { display: none; }
-.chip {
-  flex: none; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
-  border: 1px solid var(--border); border-radius: 999px; background: var(--surface); white-space: nowrap;
+/* 左侧分类栏 + 右侧菜品列表 */
+.layout { display: flex; align-items: flex-start; gap: 20px; }
+.rail {
+  position: sticky; top: var(--toolbar-h, 60px); flex: none; width: 168px;
+  max-height: calc(100vh - var(--toolbar-h, 60px)); max-height: calc(100dvh - var(--toolbar-h, 60px));
+  overflow-y: auto; overscroll-behavior: contain; padding: 16px 0 96px; scrollbar-width: none;
 }
-.chip-count { color: var(--muted); font-size: 12px; }
-.chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+.rail::-webkit-scrollbar { display: none; }
+.chip {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%;
+  padding: 10px 12px; border: 0; border-radius: 12px; background: none; text-align: left; overflow-wrap: anywhere;
+}
+.chip-count { flex: none; color: var(--muted); font-size: 12px; }
+.chip[aria-pressed="true"] { background: var(--surface); color: var(--accent); font-weight: 600; box-shadow: var(--shadow); }
 .chip[aria-pressed="true"] .chip-count { color: inherit; opacity: .7; }
 .chip-empty:not([aria-pressed="true"]) { opacity: .45; }
+.content { flex: 1; min-width: 0; }
 
-.cat { padding-top: 20px; scroll-margin-top: 120px; }
+.cat { padding-top: 20px; scroll-margin-top: calc(var(--toolbar-h, 60px) + 8px); }
 .cat-title { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; font-size: 20px; }
 .cat-count { color: var(--muted); font-size: 13px; font-weight: 400; }
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .card {
-  display: flex; flex-direction: column; justify-content: space-between; gap: 12px; padding: 14px;
+  display: flex; gap: 12px; padding: 14px;
   background: var(--surface); border: 1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow);
 }
+.card-body { display: flex; flex: 1; flex-direction: column; gap: 8px; min-width: 0; }
+.card > .qty-slot { align-self: flex-end; }
 .card-main { display: block; padding: 0; border: 0; background: none; text-align: left; }
 .dish-name { display: block; font-size: 16px; font-weight: 600; overflow-wrap: anywhere; }
 .card-main:hover .dish-name { color: var(--accent); }
 .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .tag { padding: 1px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 12px; }
 .tag-todo { background: var(--soft); color: var(--accent); }
-.card-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .links { display: flex; flex-wrap: wrap; gap: 6px; }
 .link-chip {
   padding: 4px 10px; border-radius: 999px; background: var(--surface-2); color: var(--text);
@@ -269,11 +277,26 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
   .logo { height: 48px; }
   .brand { font-size: 26px; }
   #random { margin-left: 0; }
-  .grid { grid-template-columns: 1fr; gap: 10px; }
+  /* 手机：分类栏贴左边，每道菜一行 */
+  .layout.wrap { gap: 0; padding-left: 0; }
+  .rail { width: 84px; padding: 0 0 96px; background: var(--surface-2); }
+  .chip { flex-direction: column; justify-content: center; gap: 2px; padding: 14px 6px; border-radius: 0; font-size: 14px; text-align: center; }
+  .chip[aria-pressed="true"] { background: var(--bg); box-shadow: none; }
+  .chip[aria-pressed="true"]::before {
+    content: ''; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent);
+  }
+  .content { padding-left: 12px; }
+  .cat { padding-top: 12px; }
+  .cat-title { margin-bottom: 0; font-size: 16px; }
+  .grid { display: block; }
+  .card { align-items: center; padding: 12px 0; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: none; box-shadow: none; }
+  .card:last-child { border-bottom: 0; }
+  .card > .qty-slot { align-self: center; }
+  .card-body { gap: 6px; }
   dialog.sheet { width: 100%; margin: auto 0 0; border-radius: 20px 20px 0 0; }
   .sheet-inner { max-height: 88vh; }
 }
-@media print { .toolbar, .cartbar, #random, .qty-slot { display: none !important; } body { padding-bottom: 0; } }
+@media print { .toolbar, .rail, .cartbar, #random, .qty-slot { display: none !important; } body { padding-bottom: 0; } }
 </style>
 </head>
 <body>
@@ -295,12 +318,16 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
       <button class="toggle" type="button" data-filter="video" aria-pressed="false">▶ 视频</button>
       <button class="toggle" type="button" data-filter="recipe" aria-pressed="false" {{recipe_toggle}}>📖 做法</button>
     </div>
-    <nav id="chips" class="chips" aria-label="菜品分类"></nav>
   </div>
 </div>
 
-<main id="menu" class="wrap"></main>
-<p id="empty" class="empty" hidden>没有找到符合条件的菜 🐾</p>
+<div class="wrap layout">
+  <nav id="chips" class="rail" aria-label="菜品分类"></nav>
+  <div class="content">
+    <main id="menu"></main>
+    <p id="empty" class="empty" hidden>没有找到符合条件的菜 🐾</p>
+  </div>
+</div>
 <footer class="wrap footer">{{footer_img}}<p>{{title}} · 用心做好每一顿饭</p></footer>
 
 <div id="cartbar" class="cartbar" hidden>
@@ -379,6 +406,10 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
 
   // --- 分类标签 ---
   const chips = $('chips'), menuEl = $('menu'), toolbar = document.querySelector('.toolbar');
+  // 左侧分类栏吸顶在搜索栏下面，需要知道搜索栏的高度
+  const setToolbarHeight = () => document.documentElement.style.setProperty('--toolbar-h', toolbar.offsetHeight + 'px');
+  setToolbarHeight();
+  if (window.ResizeObserver) new ResizeObserver(setToolbarHeight).observe(toolbar);
   const addChip = (key, label, count) => {
     const b = el('button', 'chip');
     b.type = 'button';
@@ -455,11 +486,10 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
     const tags = tagsFor(d);
     if (tags.length) { const t = el('span', 'tags'); t.append(...tags); main.append(t); }
     main.addEventListener('click', () => openDish(d));
-    const actions = el('div', 'card-actions');
-    const links = el('div', 'links');
-    links.append(...d.links.map(linkChip));
-    actions.append(links, qtySlot(d.name));
-    card.append(main, actions);
+    const body = el('div', 'card-body');
+    body.append(main);
+    if (d.links.length) { const links = el('div', 'links'); links.append(...d.links.map(linkChip)); body.append(links); }
+    card.append(body, qtySlot(d.name));
     d.card = card;
     sections.get(d.cat).grid.append(card);
   });
