@@ -3,4 +3,5 @@
 *.png
 *.jpg
 *.jpeg
-mymenu.html
+!assets/*
+.DS_Store
