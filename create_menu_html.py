@@ -13,7 +13,7 @@ import pandas as pd
 CSV_FILE = 'menu.csv'  # 你的CSV文件名
 HTML_OUTPUT_FILE = 'mymenu.html'
 TITLE = "Xizheng's Bistro"
-FONT_FILE = 'OzCarame.ttf'  # 和PDF同一个字体；只截取网页用到的字内嵌，文件很小
+FONT_FILE = 'assets/OzCarame.ttf'  # 和PDF同一个字体；只截取网页用到的字内嵌，文件很小
 WEB_FONT = 'ZCOOL KuaiLe'  # 找不到字体文件或字体缺字时使用的Google网络字体
 SHOW_RECIPES = True  # 点击菜名展开做法和视频链接；设为False则和PDF一样只显示菜名
 IMAGE_WIDTH = 360  # 猫咪图片压缩后的最大宽度（像素），保持网页轻量
@@ -247,9 +247,9 @@ def main():
         font_face=font_face(menu_text),
         web_font=WEB_FONT,
         web_font_url=html.escape(web_font_url),
-        left_cat=image_tag('pipi3.png', 'cat-left'),
-        right_cat=image_tag('pipi4.png', 'cat-right'),
-        footer_cat=image_tag('pipi2.png', 'cat-footer'),
+        left_cat=image_tag('assets/pipi3.png', 'cat-left'),
+        right_cat=image_tag('assets/pipi4.png', 'cat-right'),
+        footer_cat=image_tag('assets/pipi2.png', 'cat-footer'),
         nav='\n'.join(nav),
         sections='\n'.join(sections),
     )
