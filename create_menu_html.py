@@ -137,6 +137,7 @@ html { -webkit-text-size-adjust: 100%; }
 body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); padding-bottom: 96px; }
 body:has(dialog[open]) { overflow: hidden; }
 button, input, textarea { font: inherit; color: inherit; }
+input, textarea { font-size: 16px; }  /* iPhone Safari 会在字号小于16px的输入框获得焦点时自动放大页面 */
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
@@ -174,6 +175,7 @@ button { cursor: pointer; }
 .chip-count { color: var(--muted); font-size: 12px; }
 .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
 .chip[aria-pressed="true"] .chip-count { color: inherit; opacity: .7; }
+.chip-empty:not([aria-pressed="true"]) { opacity: .45; }
 
 .cat { padding-top: 20px; scroll-margin-top: 120px; }
 .cat-title { display: flex; align-items: baseline; gap: 8px; margin: 0 0 12px; font-size: 20px; }
@@ -465,17 +467,24 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
   // --- 筛选：分类、搜索、只看有视频/做法 ---
   function apply() {
     const q = state.q.trim().toLowerCase();
-    let total = 0;
+    let total = 0, matched = 0;
+    const catCounts = new Map();  // 分类标签上的数字：符合搜索和视频/做法筛选的菜数
     sections.forEach(s => { s.visible = 0; });
     dishes.forEach(d => {
-      d.visible = (state.cat === 'all' || d.cat === state.cat) && (!q || d.search.includes(q))
-        && (!state.video || d.links.length > 0) && (!state.recipe || !!d.recipe);
+      const match = (!q || d.search.includes(q)) && (!state.video || d.links.length > 0) && (!state.recipe || !!d.recipe);
+      if (match) { catCounts.set(d.cat, (catCounts.get(d.cat) || 0) + 1); matched++; }
+      d.visible = match && (state.cat === 'all' || d.cat === state.cat);
       d.card.hidden = !d.visible;
       if (d.visible) { sections.get(d.cat).visible++; total++; }
     });
     sections.forEach(s => { s.sec.hidden = !s.visible; s.count.textContent = s.visible + ' 道'; });
     $('empty').hidden = total > 0;
-    chips.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.cat === state.cat)));
+    chips.querySelectorAll('.chip').forEach(c => {
+      const n = c.dataset.cat === 'all' ? matched : (catCounts.get(c.dataset.cat) || 0);
+      c.querySelector('.chip-count').textContent = n;
+      c.classList.toggle('chip-empty', n === 0);
+      c.setAttribute('aria-pressed', String(c.dataset.cat === state.cat));
+    });
   }
   $('search').addEventListener('input', e => { state.q = e.target.value; apply(); });
   document.querySelectorAll('.toggle').forEach(b => b.addEventListener('click', () => {
