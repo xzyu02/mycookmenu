@@ -20,6 +20,10 @@ IMAGE_WIDTH = 360  # 猫咪图片压缩后的最大宽度（像素），保持�
 CATEGORY_ORDER = ['牛', '猪', '羊', '鸡', '鸭', '鱼', '海鲜', '蔬菜', '凉菜', '饭', '面', '米粉', '带馅',
                   '汤', '粥', '早餐', '甜品', '冰激凌', '饮品', '豆浆机', '酱汁']
 
+# 随机配菜（🎲 今天吃什么）的分组，按分类名开头匹配；没列出的分类不参与随机
+MEAL_GROUPS = {'荤菜': ['牛', '猪', '羊', '鸡', '鸭', '鱼', '海鲜'], '素菜': ['蔬菜', '凉菜'], '主食': ['饭', '面', '米粉', '带馅']}
+MEAL_DEFAULTS = {'荤菜': 2, '素菜': 1, '主食': 1}  # 第一次打开时每组默认几道
+
 # 从Video列（小红书分享文字、B站链接等）中提取链接
 URL_RE = re.compile(r'https?://[\w\-./?=&%#~+:@]+|(?:[a-z0-9-]+\.)+[a-z]{2,}/[\w\-./?=&%#~+:@]*',
                     re.ASCII | re.IGNORECASE)
@@ -51,6 +55,7 @@ def load_menu():
         menu.setdefault(category, []).append({
             'name': name,
             'cat': category,
+            'group': next((g for g, prefixes in MEAL_GROUPS.items() if category.startswith(tuple(prefixes))), ''),
             'todo': any('还没做' in t for t in types),
             'recipe': row['做法'].strip() if SHOW_RECIPES else '',
             'links': links,
@@ -265,6 +270,16 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
 .note-label { display: block; margin: 16px 0 6px; color: var(--muted); font-size: 13px; }
 #cart-note { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); resize: vertical; }
 .cart-actions .btn-primary { margin-left: auto; }
+.btn:disabled, .step:disabled { opacity: .4; cursor: default; }
+.meal-count { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.meal-count-label { font-weight: 600; }
+.meal-result { margin-top: 8px; }
+.meal-item { display: flex; flex: 1; flex-direction: column; gap: 6px; min-width: 0; }
+.meal-top { display: flex; align-items: center; gap: 8px; }
+.meal-name { padding: 0; border: 0; background: none; font-weight: 600; text-align: left; overflow-wrap: anywhere; }
+.meal-name:hover { color: var(--accent); }
+.meal-result .icon-btn, .meal-result .qty-slot { margin-left: 0; }
+.meal-actions .btn-primary { margin-left: auto; }
 
 .toast {
   position: fixed; left: 50%; bottom: calc(88px + env(safe-area-inset-bottom)); z-index: 20; transform: translate(-50%, 8px);
@@ -338,6 +353,23 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
   </button>
 </div>
 
+<dialog id="meal-dialog" class="sheet" aria-labelledby="meal-title">
+  <div class="sheet-inner" tabindex="-1" autofocus>
+    <div class="sheet-head">
+      <div><h2 id="meal-title">🎲 今天吃什么</h2><p id="meal-hint" class="eyebrow"></p></div>
+      <button class="icon-btn" type="button" data-close aria-label="关闭">✕</button>
+    </div>
+    <div class="sheet-body">
+      <div id="meal-counts"></div>
+      <ul id="meal-result" class="cart-list meal-result"></ul>
+    </div>
+    <div class="sheet-foot meal-actions">
+      <button id="meal-add" class="btn btn-ghost" type="button" hidden>全部加入点单</button>
+      <button id="meal-roll" class="btn btn-primary" type="button">🎲 生成</button>
+    </div>
+  </div>
+</dialog>
+
 <dialog id="dish-dialog" class="sheet" aria-labelledby="dish-name">
   <div class="sheet-inner" tabindex="-1" autofocus>
     <div class="sheet-head">
@@ -349,7 +381,6 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
       <p id="dish-recipe" class="recipe"></p>
     </div>
     <div class="sheet-foot">
-      <button id="reroll" class="btn btn-ghost" type="button" hidden>🎲 换一个</button>
       <div id="dish-qty" class="qty-slot big"></div>
     </div>
   </div>
@@ -502,6 +533,7 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
     sections.forEach(s => { s.visible = 0; });
     dishes.forEach(d => {
       const match = (!q || d.search.includes(q)) && (!state.video || d.links.length > 0) && (!state.recipe || !!d.recipe);
+      d.match = match;
       if (match) { catCounts.set(d.cat, (catCounts.get(d.cat) || 0) + 1); matched++; }
       d.visible = match && (state.cat === 'all' || d.cat === state.cat);
       d.card.hidden = !d.visible;
@@ -525,7 +557,7 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
 
   // --- 菜品详情 ---
   const dishDialog = $('dish-dialog');
-  function openDish(d, fromRandom) {
+  function openDish(d) {
     $('dish-cat').textContent = d.cat;
     $('dish-name').textContent = d.name;
     $('dish-tags').replaceChildren(...tagsFor(d).filter(t => t.classList.contains('tag-todo')));
@@ -537,19 +569,100 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
     recipe.hidden = !data.showRecipes && !d.videoText;
     $('dish-qty').dataset.qty = d.name;
     renderQty($('dish-qty'));
-    $('reroll').hidden = !fromRandom;
     if (!dishDialog.open) dishDialog.showModal();
     dishDialog.querySelector('.sheet-body').scrollTop = 0;
   }
-  const randomDish = () => {
-    const pool = dishes.filter(d => d.visible);
-    if (!pool.length) { toast('没有符合条件的菜'); return; }
-    const current = $('dish-qty').dataset.qty;
-    const choices = pool.length > 1 ? pool.filter(d => d.name !== current) : pool;
-    openDish(choices[Math.floor(Math.random() * choices.length)], true);
+
+  // --- 随机配菜：选好荤菜/素菜/主食各几道，随机配一桌（不重复） ---
+  const MEAL_KEY = 'bistro-meal';
+  const mealDialog = $('meal-dialog'), groups = data.mealGroups;
+  const mealCounts = store.get(MEAL_KEY, {});
+  groups.forEach(g => { if (!(mealCounts[g.name] >= 0)) mealCounts[g.name] = g.default; });
+  let meal = [];  // [{group, dish}]
+  const poolFor = group => dishes.filter(d => d.group === group && d.match);  // 也遵守搜索和视频/做法筛选
+  const pick = (pool, used) => {
+    const choices = pool.filter(d => !used.has(d.name));
+    return choices.length ? choices[Math.floor(Math.random() * choices.length)] : null;
   };
-  $('random').addEventListener('click', randomDish);
-  $('reroll').addEventListener('click', randomDish);
+  function renderMealCounts() {
+    const focused = document.activeElement && document.activeElement.getAttribute('aria-label');
+    $('meal-counts').replaceChildren(...groups.map(g => {
+      const n = mealCounts[g.name], available = poolFor(g.name).length;
+      const step = (text, delta, disabled, label) => {
+        const b = el('button', 'step', text);
+        b.type = 'button';
+        b.disabled = disabled;
+        b.setAttribute('aria-label', label + g.name);
+        b.addEventListener('click', () => { mealCounts[g.name] = n + delta; store.set(MEAL_KEY, mealCounts); renderMealCounts(); });
+        return b;
+      };
+      const label = el('div', 'meal-count-label', g.name);
+      label.append(el('span', 'cart-item-cat', '可选 ' + available + ' 道'));
+      const stepper = el('div', 'qty-slot');
+      stepper.append(step('−', -1, n <= 0, '少一道'), el('span', 'qty-n', n), step('+', 1, n >= Math.min(available, 9), '多一道'));
+      const row = el('div', 'meal-count');
+      row.append(label, stepper);
+      return row;
+    }));
+    const filters = [state.video && '有视频', state.recipe && '有做法', state.q.trim() && '搜索“' + state.q.trim() + '”'].filter(Boolean);
+    $('meal-hint').textContent = filters.length ? '只从符合筛选的菜里选：' + filters.join('、') : '选好每类几道，帮你随机配一桌';
+    $('meal-roll').disabled = !groups.some(g => mealCounts[g.name] > 0);
+    const again = focused && $('meal-counts').querySelector('[aria-label="' + CSS.escape(focused) + '"]');
+    if (again) (again.disabled ? again.parentNode.querySelector('button:not(:disabled)') || $('meal-roll') : again).focus();
+  }
+  function renderMeal() {
+    $('meal-result').replaceChildren(...meal.map((m, i) => {
+      const name = el('button', 'meal-name', m.dish.name);
+      name.type = 'button';
+      name.addEventListener('click', () => openDish(m.dish));
+      const top = el('div', 'meal-top');
+      top.append(el('span', 'tag', m.group), name);
+      const info = el('div', 'meal-item');
+      info.append(top);
+      if (m.dish.links.length) { const links = el('div', 'links'); links.append(...m.dish.links.map(linkChip)); info.append(links); }
+      const swap = el('button', 'icon-btn', '🔄');
+      swap.type = 'button';
+      swap.setAttribute('aria-label', '换一道' + m.group + '：' + m.dish.name);
+      swap.addEventListener('click', () => swapMeal(i));
+      const li = el('li');
+      li.append(info, swap, qtySlot(m.dish.name));
+      return li;
+    }));
+    $('meal-add').hidden = !meal.length;
+    $('meal-roll').textContent = meal.length ? '🎲 重新生成' : '🎲 生成';
+  }
+  function rollMeal() {
+    const used = new Set();
+    let short = false;
+    meal = [];
+    groups.forEach(g => {
+      const pool = poolFor(g.name);
+      for (let i = 0; i < mealCounts[g.name]; i++) {
+        const d = pick(pool, used);
+        if (!d) { short = true; break; }
+        used.add(d.name);
+        meal.push({ group: g.name, dish: d });
+      }
+    });
+    renderMeal();
+    if (short) toast('符合条件的菜不够，已经尽量选了');
+  }
+  function swapMeal(i) {
+    const d = pick(poolFor(meal[i].group), new Set(meal.map(m => m.dish.name)));
+    if (!d) { toast('这一类没有别的菜可以换了'); return; }
+    meal[i] = { group: meal[i].group, dish: d };
+    renderMeal();
+    $('meal-result').children[i].querySelector('.icon-btn').focus();
+  }
+  $('random').addEventListener('click', () => { renderMealCounts(); renderMeal(); mealDialog.showModal(); });
+  $('meal-roll').addEventListener('click', rollMeal);
+  $('meal-add').addEventListener('click', () => {
+    let added = 0;
+    meal.forEach(m => { if (!cart[m.dish.name]) { cart[m.dish.name] = 1; added++; } });
+    store.set(CART_KEY, cart);
+    refreshCart();
+    toast(added ? '已加入 ' + added + ' 道菜' : '这些菜都已经在点单里了');
+  });
 
   // --- 点单 ---
   const cartDialog = $('cart-dialog'), noteEl = $('cart-note');
@@ -635,7 +748,7 @@ dialog.sheet::backdrop { background: rgba(20, 16, 12, .45); }
   function toast(message) {
     const t = $('toast');
     // 有对话框打开时，把提示放进对话框，才能显示在最上层
-    const host = document.querySelector('dialog[open]') || document.body;
+    const host = [...document.querySelectorAll('dialog[open]')].pop() || document.body;
     if (t.parentNode !== host) host.append(t);
     t.textContent = message;
     t.classList.add('show');
@@ -659,6 +772,7 @@ def main():
         'title': TITLE,
         'showRecipes': SHOW_RECIPES,
         'categories': [{'name': c, 'count': len(ds)} for c, ds in menu.items()],
+        'mealGroups': [{'name': g, 'default': MEAL_DEFAULTS.get(g, 1)} for g in MEAL_GROUPS],
         'dishes': dishes,
     }
     values = {
